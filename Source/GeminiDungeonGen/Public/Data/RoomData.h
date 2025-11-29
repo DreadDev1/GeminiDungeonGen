@@ -60,10 +60,21 @@ class GEMINIDUNGEONGEN_API URoomData : public UDataAsset
 	GENERATED_BODY()
 	
 public:
+	// Developer Constants for Room Size (Set by Designer/Developer)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Grid Configuration|Dimensions")
+	int32 GridSizeX = 3; 
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Grid Configuration|Dimensions")
+	int32 GridSizeY = 3;
+	
 	// Developer Constant: Defines the size of one grid cell (e.g., 400x400 cm)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Grid Configuration")
 	float TileSize = 400.0f; 
 
+	// NEW: Default Content to use if a coordinate is NOT in the TMap
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Grid Configuration|Defaults")
+	TArray<UStaticMesh*> DefaultFloorMeshes;
+	
 	// The entire room layout: (X, Y) map to mesh options
 	// Designers will fill this TMap with coordinates and meshes.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Grid Configuration")

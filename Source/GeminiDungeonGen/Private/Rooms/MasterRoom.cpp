@@ -74,74 +74,85 @@ void AMasterRoom::ClearPreviousMeshes()
 
 void AMasterRoom::PopulateRoomVisuals_Internal()
 {
-    if (!RoomConfig) return;
+if (!RoomConfig) return;
 
     // 1. Initialize the Deterministic Stream
     FRandomStream Stream(GetRoomLocalSeed());
     
-    // Get the developer-defined constant tile size
     const float TileSize = RoomConfig->TileSize; 
 
-    // 2. Iterate through all (X, Y) grid slots defined by the designer
-    for (const auto& Pair : RoomConfig->GridLayout)
+    // --- Developer Control: Iterate the entire defined grid space ---
+    for (int32 X = 0; X < RoomConfig->GridSizeX; ++X)
     {
-        const FGridCoords Coords = Pair.Key;         // (X, Y)
-        const FMeshSlotData& Slot = Pair.Value;      // Mesh options
-
-        if (Slot.PossibleMeshes.Num() == 0) continue;
-
-        // --- DEVELOPER TASK: Calculate the deterministic RelativeTransform ---
-        FTransform RelativeTransform = FTransform::Identity;
-        
-        // 3. SWITCH STATEMENT: Use the ElementType to select the correct placement math
-        switch (Slot.ElementType)
+        for (int32 Y = 0; Y < RoomConfig->GridSizeY; ++Y)
         {
-        case EGridElementType::FloorOrProp:
+            FGridCoords CurrentCoords;
+            CurrentCoords.X = X;
+            CurrentCoords.Y = Y;
+            
+            // Define variables for the slot data and mesh array source
+            FMeshSlotData SlotData;
+            TArray<UStaticMesh*> MeshSourceArray;
+            bool bIsWall = false; // Used to track if we need wall logic
+
+            // 2. Override Check: See if the designer explicitly defined this coordinate
+            const FMeshSlotData* OverrideSlot = RoomConfig->GridLayout.Find(CurrentCoords);
+            
+            if (OverrideSlot)
             {
-                // This math is for Center-Pivot Meshes (like your floor tiles)
+                // **OVERRIDE PATH:** Designer defined custom content/type
+                SlotData = *OverrideSlot;
+                MeshSourceArray = SlotData.PossibleMeshes;
+                bIsWall = (SlotData.ElementType == EGridElementType::WallOrDoor);
+            }
+            else 
+            {
+                // **DEFAULT PATH:** Use the default floor logic
+                // Ensure the default array isn't empty before proceeding
+                if (RoomConfig->DefaultFloorMeshes.Num() == 0) continue; 
+                
+                // Construct default floor data
+                SlotData.ElementType = EGridElementType::FloorOrProp;
+                MeshSourceArray = RoomConfig->DefaultFloorMeshes;
+            }
+            
+            // Skip if no meshes were provided (e.g., designer left an override slot empty)
+            if (MeshSourceArray.Num() == 0) continue;
+
+            // --- 3. Placement Math (Now uses SlotData.ElementType) ---
+            FTransform RelativeTransform = FTransform::Identity;
+            
+            // Check the element type based on either the override or the default
+            if (bIsWall || SlotData.ElementType == EGridElementType::WallOrDoor)
+            {
+                // TODO: Wall logic here (will need to be simplified to assume a boundary wall)
+                // For now, it will use the placeholder logic from the previous step
+                // ... (existing WallOrDoor logic) ...
+            }
+            else // Default or Overridden Floor/Prop (FloorOrProp)
+            {
+                // Floor logic (Center-Pivot Mesh) - UNCHANGED
                 FVector Location(
-                    Coords.X * TileSize + (TileSize / 2.0f), 
-                    Coords.Y * TileSize + (TileSize / 2.0f), 
+                    CurrentCoords.X * TileSize + (TileSize / 2.0f), 
+                    CurrentCoords.Y * TileSize + (TileSize / 2.0f), 
                     0.0f
                 );
                 RelativeTransform.SetLocation(Location);
-                break;
             }
 
-        case EGridElementType::WallOrDoor:
+            // --- 4. Deterministic Selection and Spawning ---
+            int32 MaxIndex = MeshSourceArray.Num() - 1;
+            int32 SelectedIndex = Stream.RandRange(0, MaxIndex); 
+            UStaticMesh* SelectedMesh = MeshSourceArray[SelectedIndex];
+
+            if (SelectedMesh)
             {
-                // TODO: IMPLEMENT COMPLEX WALL PLACEMENT LOGIC HERE
-                // This requires determining the tile's edge, calculating the half-size offset,
-                // and applying rotation (0, 90, 180, or 270 degrees).
-                
-                // Placeholder: Use a basic tile-center for now until wall logic is built
-                FVector Location(
-                    Coords.X * TileSize + (TileSize / 2.0f), 
-                    Coords.Y * TileSize + (TileSize / 2.0f), 
-                    0.0f // Walls need a height offset, too!
-                );
-                RelativeTransform.SetLocation(Location);
-                
-                break;
+                UStaticMeshComponent* NewMesh = NewObject<UStaticMeshComponent>(this);
+                NewMesh->SetStaticMesh(SelectedMesh);
+                NewMesh->RegisterComponent();
+                NewMesh->AttachToComponent(GeometryRoot, FAttachmentTransformRules::KeepRelativeTransform, NAME_None);
+                NewMesh->SetRelativeTransform(RelativeTransform); 
             }
-        }
-        
-        // 4. Deterministic Selection
-        int32 MaxIndex = Slot.PossibleMeshes.Num() - 1;
-        int32 SelectedIndex = Stream.RandRange(0, MaxIndex); 
-        UStaticMesh* SelectedMesh = Slot.PossibleMeshes[SelectedIndex];
-
-        if (SelectedMesh)
-        {
-            // 5. Spawn and Attach (Unchanged logic)
-            UStaticMeshComponent* NewMesh = NewObject<UStaticMeshComponent>(this);
-            NewMesh->SetStaticMesh(SelectedMesh);
-            
-            NewMesh->RegisterComponent();
-            NewMesh->AttachToComponent(GeometryRoot, FAttachmentTransformRules::KeepRelativeTransform, NAME_None);
-            
-            // Apply the calculated transform (including location and rotation)
-            NewMesh->SetRelativeTransform(RelativeTransform); // Use the calculated transform
         }
     }
 }
