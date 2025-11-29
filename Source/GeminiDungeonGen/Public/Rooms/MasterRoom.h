@@ -21,10 +21,10 @@ public:
 	
 	// Designer/Blueprint friendly read access
 	UFUNCTION(BlueprintPure, Category = "Dungeon|Config")
-	int32 GetRoomLocalSeed() const { return RoomLocalSeed; }
+	int32 GetRoomLocalSeed() const; 
     
 	UFUNCTION(BlueprintPure, Category = "Dungeon|Config")
-	URoomData* GetRoomConfig() const { return RoomConfig; }
+	URoomData* GetRoomConfig() const;
 
 	// New functions to write data (Callable by C++ ONLY, not BlueprintCallable)
 	void SetRoomLocalSeed(int32 NewSeed); 
