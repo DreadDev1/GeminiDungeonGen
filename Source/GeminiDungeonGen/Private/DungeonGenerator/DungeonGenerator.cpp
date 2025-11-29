@@ -49,8 +49,15 @@ void ADungeonGenerator::GenerateDungeon()
 	// URoomDataAsset* ChosenAsset = Cast<URoomDataAsset>(AssetPath.ResolveObject());
     
 	// For now, let's assume we have a way to get the asset:
-	URoomData* ChosenAsset = nullptr; // <--- Developer needs to load this!
+	URoomData* ChosenAsset = DefaultRoomData; // <--- Developer needs to load this!
 
+	// Check if the asset was actually set in the editor
+	if (!ChosenAsset)
+	{
+		UE_LOG(LogTemp, Error, TEXT("ADungeonGenerator: DefaultRoomData is NOT set. Check the Blueprint Generator Details Panel."));
+		return;
+	}
+	
 	// 2. Get a unique local seed for this room instance
 	// We use MAX_int32 (not MAX_INT) for the max range.
 	int32 RoomLocalSeed = Stream.RandRange(0, MAX_int32);
@@ -58,12 +65,17 @@ void ADungeonGenerator::GenerateDungeon()
 	// 3. Define the spawn point (e.g., world origin)
 	FVector SpawnLocation = FVector(0.0f, 0.0f, 0.0f);
 	FTransform SpawnTransform(SpawnLocation); 
+	if (!RoomClassToSpawn)
+	{
+		UE_LOG(LogTemp, Error, TEXT("ADungeonGenerator: RoomClassToSpawn is NOT set. Check the Blueprint Generator Details Panel."));
+		return;
+	}
 	
 	// 4. Spawn the room actor (use your Blueprint subclass)
 	// **IMPORTANT:** Use the Blueprint subclass, NOT the C++ class, for spawning.
 	// We assume you have a Blueprint called 'BP_MasterRoom'.
 	
-	TSubclassOf<AMasterRoom> RoomClassToSpawn = AMasterRoom::StaticClass(); 
+	TSubclassOf<AMasterRoom> DGRoomClassToSpawn = AMasterRoom::StaticClass(); 
 	
 	// Find the Blueprint class reference for robust spawning (replace BP_MasterRoom_C)
 	// Example: ConstructorHelpers::FClassFinder<AMasterRoom> BP_RoomClass(TEXT("/Game/YourPath/BP_MasterRoom.BP_MasterRoom_C"));
@@ -71,7 +83,7 @@ void ADungeonGenerator::GenerateDungeon()
 
 
 	AMasterRoom* Room = GetWorld()->SpawnActor<AMasterRoom>(
-		RoomClassToSpawn, 
+		DGRoomClassToSpawn, 
 		SpawnTransform
 	);
 
